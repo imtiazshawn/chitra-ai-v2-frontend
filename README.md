@@ -12,8 +12,6 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000.
-
 > Note: `next/font/google` fetches Space Grotesk, Manrope, and JetBrains Mono at build
 > time. This needs normal internet access to fonts.googleapis.com — if you're behind a
 > restrictive proxy, swap the fonts in `app/layout.tsx` for `next/font/local` or a

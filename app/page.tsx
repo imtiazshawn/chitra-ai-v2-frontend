@@ -1,69 +1,277 @@
-import Image from "next/image";
+"use client";
+
+import { useRef, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Navbar } from "@/components/Navbar";
+import { Footer } from "@/components/Footer";
+import { PromptConsole } from "@/components/PromptConsole";
+import { PipelineTimeline } from "@/components/PipelineTimeline";
+import { VideoResult } from "@/components/VideoResult";
+import { ErrorPanel } from "@/components/ErrorPanel";
+import { ReelGallery } from "@/components/ReelGallery";
+import { GallerySkeleton } from "@/components/GallerySkeleton";
+import { DemoDock, DemoScenario } from "@/components/DemoDock";
+import { INITIAL_STAGES, PAST_REELS } from "@/lib/mock-data";
+import { GenerationStatus, PipelineStage, ReelJob } from "@/lib/types";
+
+const STAGE_DURATIONS: Record<string, number> = {
+  scripting: 1300,
+  audio: 1700,
+  captions: 1200,
+  assets: 1500,
+  rendering: 2100,
+};
+
+const ERROR_STAGES: PipelineStage[] = INITIAL_STAGES.map((s) => {
+  if (s.key === "scripting" || s.key === "audio" || s.key === "captions")
+    return { ...s, status: "done", progress: 100 };
+  if (s.key === "assets")
+    return { ...s, status: "error", progress: 62 };
+  return s;
+});
+
+function cloneStages() {
+  return INITIAL_STAGES.map((s) => ({ ...s }));
+}
 
 export default function Home() {
+  const [scenario, setScenario] = useState<DemoScenario>("idle");
+  const [stages, setStages] = useState<PipelineStage[]>(cloneStages());
+  const [job, setJob] = useState<ReelJob | null>(null);
+  const [activePrompt, setActivePrompt] = useState("");
+  const runId = useRef(0);
+
+  const status: GenerationStatus =
+    scenario === "processing"
+      ? "processing"
+      : scenario === "completed"
+      ? "completed"
+      : scenario === "error"
+      ? "error"
+      : "idle";
+
+  // Drive the demo dock's static scenarios (jump straight to a state)
+  const handleScenarioChange = (next: DemoScenario) => {
+    runId.current += 1; // invalidate any running simulation
+    setScenario(next);
+
+    if (next === "error") {
+      setStages(ERROR_STAGES);
+      setJob({
+        id: "reel_demo_err",
+        prompt: activePrompt || "The last library on earth",
+        status: "error",
+        createdAt: new Date().toISOString(),
+        errorMessage:
+          "Asset fetch timed out — no footage matched 3 script lines.",
+        errorStage: "assets",
+      });
+    } else if (next === "completed") {
+      setStages(INITIAL_STAGES.map((s) => ({ ...s, status: "done", progress: 100 })));
+      setJob({
+        id: "reel_demo_complete",
+        prompt: activePrompt || "Life is beautiful",
+        status: "completed",
+        createdAt: new Date().toISOString(),
+        durationSeconds: 42,
+        supabaseUrl:
+          "https://xzkq-storage.supabase.co/storage/v1/object/public/reels/reel_demo.mp4",
+      });
+    } else if (next === "idle") {
+      setStages(cloneStages());
+      setJob(null);
+    }
+  };
+
+  const runSimulation = async (prompt: string) => {
+    const myRun = ++runId.current;
+    setActivePrompt(prompt);
+    setJob(null);
+    setScenario("processing");
+    const freshStages = cloneStages();
+    setStages(freshStages);
+
+    for (let i = 0; i < freshStages.length; i++) {
+      if (runId.current !== myRun) return;
+      const stageKey = freshStages[i].key;
+      const duration = STAGE_DURATIONS[stageKey] ?? 1400;
+      const steps = 16;
+      const stepTime = duration / steps;
+
+      setStages((prev) =>
+        prev.map((s, idx) => (idx === i ? { ...s, status: "active", progress: 0 } : s))
+      );
+
+      for (let step = 1; step <= steps; step++) {
+        await new Promise((r) => setTimeout(r, stepTime));
+        if (runId.current !== myRun) return;
+        setStages((prev) =>
+          prev.map((s, idx) =>
+            idx === i ? { ...s, progress: Math.min(100, (step / steps) * 100) } : s
+          )
+        );
+      }
+
+      setStages((prev) =>
+        prev.map((s, idx) => (idx === i ? { ...s, status: "done", progress: 100 } : s))
+      );
+    }
+
+    if (runId.current !== myRun) return;
+    setJob({
+      id: `reel_${Math.random().toString(36).slice(2, 8)}`,
+      prompt,
+      status: "completed",
+      createdAt: new Date().toISOString(),
+      durationSeconds: 38 + Math.round(Math.random() * 20),
+      supabaseUrl:
+        "https://xzkq-storage.supabase.co/storage/v1/object/public/reels/reel_new.mp4",
+    });
+    setScenario("completed");
+  };
+
+  const handleGenerate = (prompt: string) => {
+    runSimulation(prompt);
+  };
+
+  const handleRegenerate = () => {
+    if (activePrompt) runSimulation(activePrompt);
+  };
+
+  const handleRetry = () => {
+    if (activePrompt) runSimulation(activePrompt);
+    else setScenario("idle");
+  };
+
+  const galleryReels = scenario === "empty" ? [] : PAST_REELS;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+    <>
+      <div className="grain-field" />
+      <div className="vignette" />
+
+      <Navbar />
+
+      <main id="top" className="flex-1">
+        {/* ------------------------------------------------------------ */}
+        {/* Hero / Studio                                                 */}
+        {/* ------------------------------------------------------------ */}
+        <section id="studio" className="relative overflow-hidden px-5 pb-20 pt-16 sm:px-8 sm:pt-24">
+          <div
+            className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] opacity-70"
+            style={{
+              background:
+                "radial-gradient(60% 55% at 50% 0%, rgba(255,176,32,0.14), transparent 60%), radial-gradient(40% 40% at 85% 15%, rgba(76,224,210,0.10), transparent 60%)",
+            }}
+          />
+
+          <div className="mx-auto max-w-3xl text-center">
+            <motion.span
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="inline-flex items-center gap-2 rounded-full border border-panel-hairline-strong bg-panel px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-ink-dim"
             >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
+              <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+              Script to screen, fully automated
+            </motion.span>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.05 }}
+              className="mt-5 text-balance font-display text-4xl font-semibold leading-[1.06] tracking-tight text-ink sm:text-6xl"
             >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
+              Type a thought.
+              <br />
+              <span className="text-amber-400">Screen a reel.</span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 14 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              className="mx-auto mt-4 max-w-xl text-balance text-[15.5px] leading-relaxed text-ink-dim sm:text-base"
+            >
+              One line in. ChitraAI writes the script, records the voiceover,
+              syncs the captions, sources the footage, and cuts the final
+              vertical edit — no timeline required, no editor needed.
+            </motion.p>
+          </div>
+
+          <div className="mt-10">
+            <PromptConsole status={status} onGenerate={handleGenerate} />
+          </div>
+
+          {/* Live pipeline / result / error zone */}
+          <div className="mx-auto mt-8 max-w-3xl">
+            <AnimatePresence mode="wait">
+              {scenario === "processing" && (
+                <motion.div
+                  key="pipeline"
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  <PipelineTimeline stages={stages} />
+                </motion.div>
+              )}
+
+              {scenario === "error" && job && (
+                <motion.div key="error" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
+                  <div className="mb-5">
+                    <PipelineTimeline stages={stages} />
+                  </div>
+                  <ErrorPanel job={job} onRetry={handleRetry} />
+                </motion.div>
+              )}
+
+              {scenario === "completed" && job && (
+                <motion.div
+                  key="result"
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                  className="rounded-2xl border border-panel-hairline bg-panel/60 p-6 sm:p-9"
+                >
+                  <VideoResult job={job} onRegenerate={handleRegenerate} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </section>
+
+        {/* ------------------------------------------------------------ */}
+        {/* Reel library                                                  */}
+        {/* ------------------------------------------------------------ */}
+        <section id="library" className="border-t border-panel-hairline px-5 py-16 sm:px-8 sm:py-20">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
+              <div>
+                <span className="font-mono text-[11px] uppercase tracking-wider text-ink-faint">
+                  Reel library
+                </span>
+                <h2 className="mt-1 font-display text-2xl font-semibold text-ink sm:text-3xl">
+                  Your past takes
+                </h2>
+              </div>
+              <span className="font-mono text-[12px] text-ink-faint">
+                {scenario === "loading"
+                  ? "Loading…"
+                  : `${galleryReels.length} reel${galleryReels.length === 1 ? "" : "s"}`}
+              </span>
+            </div>
+
+            {scenario === "loading" ? (
+              <GallerySkeleton />
+            ) : (
+              <ReelGallery reels={galleryReels} />
+            )}
+          </div>
+        </section>
       </main>
-    </div>
+
+      <Footer />
+
+      <DemoDock scenario={scenario} onChange={handleScenarioChange} />
+    </>
   );
 }

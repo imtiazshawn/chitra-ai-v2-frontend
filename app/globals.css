@@ -1,26 +1,201 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
+/* ------------------------------------------------------------------ */
+/*  Design tokens — ChitraAI "cutting room" theme                      */
+/* ------------------------------------------------------------------ */
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  /* base surfaces */
+  --color-void: #08080a;
+  --color-void-soft: #0d0d10;
+  --color-panel: #131317;
+  --color-panel-hi: #1b1b21;
+  --color-panel-hairline: rgba(255, 255, 255, 0.08);
+  --color-panel-hairline-strong: rgba(255, 255, 255, 0.14);
+
+  /* ink */
+  --color-ink: #f3f0e8;
+  --color-ink-dim: #9c9aa4;
+  --color-ink-faint: #67666f;
+
+  /* signature amber — the "tally light" */
+  --color-amber-50: #fff6e5;
+  --color-amber-200: #ffdd9a;
+  --color-amber-400: #ffb020;
+  --color-amber-500: #f59e0b;
+  --color-amber-600: #c9820c;
+  --color-amber-900: #3a2708;
+
+  /* processing cyan — the "scope" accent */
+  --color-cyan-300: #8ff0e6;
+  --color-cyan-400: #4ce0d2;
+  --color-cyan-500: #22bfb2;
+  --color-cyan-900: #0c2d2b;
+
+  /* signal red — the "record" accent */
+  --color-ember-400: #ff6a55;
+  --color-ember-500: #ef4136;
+  --color-ember-900: #351210;
+
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+
+  --animate-blink: blink 1.6s step-start infinite;
+  --animate-scan: scan 3.2s linear infinite;
+  --animate-marquee: marquee 22s linear infinite;
+  --animate-rise: rise 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  --animate-flicker: flicker 4s ease-in-out infinite;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+@keyframes scan {
+  0% {
+    transform: translateY(-100%);
+  }
+  100% {
+    transform: translateY(100%);
+  }
+}
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes flicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  92% {
+    opacity: 1;
+  }
+  93% {
+    opacity: 0.85;
+  }
+  94% {
+    opacity: 1;
   }
 }
 
+html {
+  color-scheme: dark;
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--color-void);
+  font-feature-settings: "ss01" 1, "cv01" 1;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Texture: fine grain + vignette, applied once at the root canvas    */
+/* ------------------------------------------------------------------ */
+.grain-field {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.05;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  background-size: 180px 180px;
+}
+
+.vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 59;
+  background: radial-gradient(
+    120% 100% at 50% 0%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.55) 100%
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sprocket strip — the film-reel motif used along key panel edges    */
+/* ------------------------------------------------------------------ */
+.sprockets {
+  background-image: repeating-linear-gradient(
+    90deg,
+    var(--color-ink-faint) 0 3px,
+    transparent 3px 18px
+  );
+  background-position: center;
+  height: 3px;
+  opacity: 0.35;
+}
+
+.sprocket-rail {
+  background-image: radial-gradient(
+    circle,
+    rgba(255, 255, 255, 0.16) 0 1.5px,
+    transparent 1.6px
+  );
+  background-size: 16px 16px;
+  background-repeat: repeat-x;
+  background-position: center;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Glass panel                                                        */
+/* ------------------------------------------------------------------ */
+.glass {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.045),
+    rgba(255, 255, 255, 0.015)
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--color-panel-hairline);
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-panel-hi);
+  border-radius: 999px;
+  border: 2px solid var(--color-void);
+}
+
+/* Focus visibility, kept intentional not invisible */
+:focus-visible {
+  outline: 2px solid var(--color-amber-400);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
