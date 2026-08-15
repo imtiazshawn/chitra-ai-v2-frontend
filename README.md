@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ChitraAI — Frontend Template
 
-## Getting Started
+A cinematic, dark-mode "creator studio" frontend for ChitraAI, an AI reel-generation
+platform. Built with Next.js (App Router), TypeScript, Tailwind CSS v4, Framer Motion,
+and Lucide icons. No backend/API calls are wired up — this is UI only, with a demo
+control dock so you can preview every state without a live pipeline.
 
-First, run the development server:
+## Getting started
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+> Note: `next/font/google` fetches Space Grotesk, Manrope, and JetBrains Mono at build
+> time. This needs normal internet access to fonts.googleapis.com — if you're behind a
+> restrictive proxy, swap the fonts in `app/layout.tsx` for `next/font/local` or a
+> different Google font.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## What's in here
 
-## Learn More
+- `app/layout.tsx` — fonts + root shell
+- `app/globals.css` — design tokens (`@theme`), film-grain/vignette textures, sprocket
+  motifs, glass utility, keyframes
+- `app/page.tsx` — assembles the studio page and simulates the generation pipeline
+  client-side (setTimeout-driven) so the UI is fully interactive without a backend
+- `components/Navbar.tsx` — top nav
+- `components/PromptConsole.tsx` — hero input styled as a director's slate, with a
+  typewriter placeholder cycling through sample prompts, voice/length chips, and the
+  "Action — Generate Reel" trigger
+- `components/PipelineTimeline.tsx` — **signature piece**: the live pipeline tracker,
+  built as a film-strip editing timeline (sprocket rails, a moving playhead, waveform
+  ticks on the active stage) instead of a plain progress bar
+- `components/VideoResult.tsx` — 9:16 result player mock + Download / Copy Supabase URL
+  / Regenerate actions
+- `components/ErrorPanel.tsx` — diagnostic error state tied to the stage that failed,
+  with a retry action
+- `components/ReelGallery.tsx` — past-reels grid + empty state
+- `components/GallerySkeleton.tsx` — loading skeleton for the library
+- `components/DemoDock.tsx` — floating "preview monitor" to jump between every state
+  (idle / processing / completed / error / loading / empty) for demoing the UI. Safe to
+  delete once real data is wired in.
+- `lib/types.ts`, `lib/mock-data.ts` — shared types + mock content for the demo
 
-To learn more about Next.js, take a look at the following resources:
+## Wiring up the real pipeline
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Everything is written to swap cleanly:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Replace `runSimulation()` in `app/page.tsx` with real calls to your generation API,
+   updating the same `stages` / `job` state shape as events come in (poll, SSE, or
+   websocket all work — just call the same `setStages` / `setJob` setters).
+2. Replace `PAST_REELS` in `lib/mock-data.ts` with a fetch from Supabase.
+3. Remove `components/DemoDock.tsx` and its usage in `app/page.tsx` once you don't need
+   manual state previews anymore.
