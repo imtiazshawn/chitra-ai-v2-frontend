@@ -121,10 +121,6 @@ export function VideoResult({
             </button>
           )}
         </div>
-        <div className="mt-3 flex items-center justify-center gap-1.5 font-mono text-[10.5px] text-ink-faint">
-          <Captions className="h-3 w-3" />
-          Captions synced · 9:16{job.durationSeconds ? ` · ${job.durationSeconds}s` : ""}
-        </div>
       </div>
 
       {/* Details + actions */}
@@ -141,9 +137,8 @@ export function VideoResult({
         </p>
 
         <dl className="mt-6 grid grid-cols-3 gap-3 sm:max-w-sm">
-          <Stat label="Duration" value={job.durationSeconds ? `${job.durationSeconds}s` : "—"} />
+          <Stat label="Status" value={job.status ? `${job.status}` : "—"} />
           <Stat label="Format" value="9:16 · MP4" />
-          <Stat label="Storage" value="Supabase" />
         </dl>
 
         <div className="mt-7 flex flex-wrap gap-3">
@@ -159,23 +154,6 @@ export function VideoResult({
           </a>
 
           <button
-            onClick={handleCopy}
-            className="flex min-w-[196px] items-center justify-center gap-2 rounded-xl border border-panel-hairline-strong bg-panel px-5 py-3 font-display text-sm font-semibold text-ink transition-all hover:border-cyan-400/40 hover:text-cyan-300 active:scale-[0.98]"
-          >
-            {copied ? (
-              <>
-                <Check className="h-4 w-4 text-cyan-300" />
-                Copied URL
-              </>
-            ) : (
-              <>
-                <Copy className="h-4 w-4" />
-                Copy Supabase URL
-              </>
-            )}
-          </button>
-
-          <button
             onClick={onRegenerate}
             className="flex items-center gap-2 rounded-xl border border-panel-hairline-strong bg-transparent px-5 py-3 font-display text-sm font-semibold text-ink-dim transition-all hover:border-ember-500/40 hover:text-ember-400 active:scale-[0.98]"
           >
@@ -183,12 +161,6 @@ export function VideoResult({
             Regenerate
           </button>
         </div>
-
-        {job.supabaseUrl && (
-          <p className="mt-4 truncate rounded-lg border border-panel-hairline bg-panel/60 px-3 py-2 font-mono text-[11px] text-ink-faint">
-            {job.supabaseUrl}
-          </p>
-        )}
       </div>
     </motion.div>
   );
