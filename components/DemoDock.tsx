@@ -4,30 +4,21 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MonitorPlay, X } from "lucide-react";
 import { cn } from "@/lib/cn";
+import { HeroScenario } from "@/hooks/useReelGeneration";
 
-export type DemoScenario =
-  | "idle"
-  | "processing"
-  | "completed"
-  | "error"
-  | "empty"
-  | "loading";
-
-const SCENARIOS: { key: DemoScenario; label: string }[] = [
+const SCENARIOS: { key: HeroScenario; label: string }[] = [
   { key: "idle", label: "Idle" },
   { key: "processing", label: "Processing" },
   { key: "completed", label: "Completed" },
   { key: "error", label: "Error" },
-  { key: "loading", label: "Library loading" },
-  { key: "empty", label: "Empty library" },
 ];
 
 export function DemoDock({
   scenario,
   onChange,
 }: {
-  scenario: DemoScenario;
-  onChange: (s: DemoScenario) => void;
+  scenario: HeroScenario;
+  onChange: (s: HeroScenario) => void;
 }) {
   const [open, setOpen] = useState(true);
 
@@ -40,7 +31,7 @@ export function DemoDock({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 12, scale: 0.96 }}
             transition={{ duration: 0.2 }}
-            className="glass mb-3 w-64 rounded-xl border border-panel-hairline-strong p-3 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)]"
+            className="glass mb-3 w-60 rounded-xl border border-panel-hairline-strong p-3 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)]"
           >
             <div className="mb-2.5 flex items-center justify-between">
               <span className="flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-wider text-ink-faint">
@@ -72,8 +63,8 @@ export function DemoDock({
               ))}
             </div>
             <p className="mt-2.5 text-[10.5px] leading-snug text-ink-faint">
-              Demo-only controls to preview every UI state. No pipeline is
-              wired up yet.
+              Jumps the hero panel to a state without calling the API. The
+              reel library below is always live.
             </p>
           </motion.div>
         )}

@@ -1,6 +1,5 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -10,36 +9,19 @@ import { VideoResult } from "@/components/VideoResult";
 import { ErrorPanel } from "@/components/ErrorPanel";
 import { ReelGallery } from "@/components/ReelGallery";
 import { GallerySkeleton } from "@/components/GallerySkeleton";
-import { DemoDock, DemoScenario } from "@/components/DemoDock";
-import { INITIAL_STAGES, PAST_REELS } from "@/lib/mock-data";
-import { GenerationStatus, PipelineStage, ReelJob } from "@/lib/types";
-
-const STAGE_DURATIONS: Record<string, number> = {
-  scripting: 1300,
-  audio: 1700,
-  captions: 1200,
-  assets: 1500,
-  rendering: 2100,
-};
-
-const ERROR_STAGES: PipelineStage[] = INITIAL_STAGES.map((s) => {
-  if (s.key === "scripting" || s.key === "audio" || s.key === "captions")
-    return { ...s, status: "done", progress: 100 };
-  if (s.key === "assets")
-    return { ...s, status: "error", progress: 62 };
-  return s;
-});
-
-function cloneStages() {
-  return INITIAL_STAGES.map((s) => ({ ...s }));
-}
+import { GalleryError } from "@/components/GalleryError";
+import { DemoDock } from "@/components/DemoDock";
+import { useReelGeneration } from "@/hooks/useReelGeneration";
+import { useReelHistory } from "@/hooks/useReelHistory";
+import { GenerationStatus } from "@/lib/types";
 
 export default function Home() {
-  const [scenario, setScenario] = useState<DemoScenario>("idle");
-  const [stages, setStages] = useState<PipelineStage[]>(cloneStages());
-  const [job, setJob] = useState<ReelJob | null>(null);
-  const [activePrompt, setActivePrompt] = useState("");
-  const runId = useRef(0);
+  const { reels, status: galleryStatus, errorMessage, reload, prepend } =
+    useReelHistory();
+  const { scenario, stages, job, generate, regenerate, preview } =
+    useReelGeneration({
+      onCompleted: (completedJob) => prepend(completedJob),
+    });
 
   const status: GenerationStatus =
     scenario === "processing"
@@ -49,101 +31,6 @@ export default function Home() {
       : scenario === "error"
       ? "error"
       : "idle";
-
-  // Drive the demo dock's static scenarios (jump straight to a state)
-  const handleScenarioChange = (next: DemoScenario) => {
-    runId.current += 1; // invalidate any running simulation
-    setScenario(next);
-
-    if (next === "error") {
-      setStages(ERROR_STAGES);
-      setJob({
-        id: "reel_demo_err",
-        prompt: activePrompt || "The last library on earth",
-        status: "error",
-        createdAt: new Date().toISOString(),
-        errorMessage:
-          "Asset fetch timed out — no footage matched 3 script lines.",
-        errorStage: "assets",
-      });
-    } else if (next === "completed") {
-      setStages(INITIAL_STAGES.map((s) => ({ ...s, status: "done", progress: 100 })));
-      setJob({
-        id: "reel_demo_complete",
-        prompt: activePrompt || "Life is beautiful",
-        status: "completed",
-        createdAt: new Date().toISOString(),
-        durationSeconds: 42,
-        supabaseUrl:
-          "https://xzkq-storage.supabase.co/storage/v1/object/public/reels/reel_demo.mp4",
-      });
-    } else if (next === "idle") {
-      setStages(cloneStages());
-      setJob(null);
-    }
-  };
-
-  const runSimulation = async (prompt: string) => {
-    const myRun = ++runId.current;
-    setActivePrompt(prompt);
-    setJob(null);
-    setScenario("processing");
-    const freshStages = cloneStages();
-    setStages(freshStages);
-
-    for (let i = 0; i < freshStages.length; i++) {
-      if (runId.current !== myRun) return;
-      const stageKey = freshStages[i].key;
-      const duration = STAGE_DURATIONS[stageKey] ?? 1400;
-      const steps = 16;
-      const stepTime = duration / steps;
-
-      setStages((prev) =>
-        prev.map((s, idx) => (idx === i ? { ...s, status: "active", progress: 0 } : s))
-      );
-
-      for (let step = 1; step <= steps; step++) {
-        await new Promise((r) => setTimeout(r, stepTime));
-        if (runId.current !== myRun) return;
-        setStages((prev) =>
-          prev.map((s, idx) =>
-            idx === i ? { ...s, progress: Math.min(100, (step / steps) * 100) } : s
-          )
-        );
-      }
-
-      setStages((prev) =>
-        prev.map((s, idx) => (idx === i ? { ...s, status: "done", progress: 100 } : s))
-      );
-    }
-
-    if (runId.current !== myRun) return;
-    setJob({
-      id: `reel_${Math.random().toString(36).slice(2, 8)}`,
-      prompt,
-      status: "completed",
-      createdAt: new Date().toISOString(),
-      durationSeconds: 38 + Math.round(Math.random() * 20),
-      supabaseUrl:
-        "https://xzkq-storage.supabase.co/storage/v1/object/public/reels/reel_new.mp4",
-    });
-    setScenario("completed");
-  };
-
-  const handleGenerate = (prompt: string) => {
-    runSimulation(prompt);
-  };
-
-  const handleRegenerate = () => {
-    if (activePrompt) runSimulation(activePrompt);
-  };
-
-  const handleRetry = () => {
-    if (activePrompt) runSimulation(activePrompt);
-    else setScenario("idle");
-  };
-
-  const galleryReels = scenario === "empty" ? [] : PAST_REELS;
 
   return (
     <>
@@ -200,7 +87,7 @@ export default function Home() {
           </div>
 
           <div className="mt-10">
-            <PromptConsole status={status} onGenerate={handleGenerate} />
+            <PromptConsole status={status} onGenerate={generate} />
           </div>
 
           {/* Live pipeline / result / error zone */}
@@ -221,7 +108,7 @@ export default function Home() {
                   <div className="mb-5">
                     <PipelineTimeline stages={stages} />
                   </div>
-                  <ErrorPanel job={job} onRetry={handleRetry} />
+                  <ErrorPanel job={job} onRetry={regenerate} />
                 </motion.div>
               )}
 
@@ -232,7 +119,7 @@ export default function Home() {
                   transition={{ duration: 0.3 }}
                   className="rounded-2xl border border-panel-hairline bg-panel/60 p-6 sm:p-9"
                 >
-                  <VideoResult job={job} onRegenerate={handleRegenerate} />
+                  <VideoResult job={job} onRegenerate={regenerate} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -254,24 +141,26 @@ export default function Home() {
                 </h2>
               </div>
               <span className="font-mono text-[12px] text-ink-faint">
-                {scenario === "loading"
+                {galleryStatus === "loading"
                   ? "Loading…"
-                  : `${galleryReels.length} reel${galleryReels.length === 1 ? "" : "s"}`}
+                  : galleryStatus === "ready"
+                  ? `${reels.length} reel${reels.length === 1 ? "" : "s"}`
+                  : ""}
               </span>
             </div>
 
-            {scenario === "loading" ? (
-              <GallerySkeleton />
-            ) : (
-              <ReelGallery reels={galleryReels} />
+            {galleryStatus === "loading" && <GallerySkeleton />}
+            {galleryStatus === "error" && (
+              <GalleryError message={errorMessage ?? "Something went wrong."} onRetry={reload} />
             )}
+            {galleryStatus === "ready" && <ReelGallery reels={reels} />}
           </div>
         </section>
       </main>
 
       <Footer />
 
-      <DemoDock scenario={scenario} onChange={handleScenarioChange} />
+      <DemoDock scenario={scenario} onChange={preview} />
     </>
   );
 }

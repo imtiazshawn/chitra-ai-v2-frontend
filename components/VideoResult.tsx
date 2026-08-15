@@ -93,7 +93,7 @@ export function VideoResult({
               <span>
                 {job.durationSeconds
                   ? `00:${String(job.durationSeconds).padStart(2, "0")}`
-                  : "00:42"}
+                  : "—:—"}
               </span>
             </div>
           </div>
@@ -123,7 +123,7 @@ export function VideoResult({
         </div>
         <div className="mt-3 flex items-center justify-center gap-1.5 font-mono text-[10.5px] text-ink-faint">
           <Captions className="h-3 w-3" />
-          Captions synced · 9:16 · {job.durationSeconds ?? 42}s
+          Captions synced · 9:16{job.durationSeconds ? ` · ${job.durationSeconds}s` : ""}
         </div>
       </div>
 
@@ -141,15 +141,17 @@ export function VideoResult({
         </p>
 
         <dl className="mt-6 grid grid-cols-3 gap-3 sm:max-w-sm">
-          <Stat label="Duration" value={`${job.durationSeconds ?? 42}s`} />
+          <Stat label="Duration" value={job.durationSeconds ? `${job.durationSeconds}s` : "—"} />
           <Stat label="Format" value="9:16 · MP4" />
-          <Stat label="Captions" value="12 lines" />
+          <Stat label="Storage" value="Supabase" />
         </dl>
 
         <div className="mt-7 flex flex-wrap gap-3">
           <a
             href={job.supabaseUrl}
             download
+            target="_blank"
+            rel="noopener noreferrer"
             className="group flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-3 font-display text-sm font-semibold text-void transition-all hover:bg-amber-200 hover:shadow-[0_0_24px_2px_rgba(255,176,32,0.35)] active:scale-[0.98]"
           >
             <Download className="h-4 w-4" />

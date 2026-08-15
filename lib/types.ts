@@ -36,3 +36,35 @@ export interface ReelJob {
   errorMessage?: string;
   errorStage?: StageKey;
 }
+
+
+export type BackendStatus = string;
+
+export interface GenerateRequest {
+  topic: string;
+}
+
+export interface GenerateResponse {
+  job_id: string;
+  status: BackendStatus;
+}
+
+export interface JobStatusResponse {
+  job_id: string;
+  topic: string;
+  status: BackendStatus;
+  progress: number;
+  video_url: string | null;
+  error_message: string | null;
+}
+
+export interface HistoryItem {
+  id: string;
+  topic: string;
+  video_url: string;
+  created_at: string;
+}
+
+export interface HistoryResponse {
+  items: HistoryItem[];
+}
