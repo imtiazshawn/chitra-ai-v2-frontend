@@ -3,11 +3,15 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
-// Whether Supabase is actually configured in this environment
+// Reject placeholder values from .env.example
 export const isSupabaseConfigured =
-  supabaseUrl.length > 0 && supabaseAnonKey.length > 0;
+  supabaseUrl.length > 0 &&
+  supabaseAnonKey.length > 0 &&
+  !supabaseUrl.includes("your-project-ref");
 
-// Singleton — created lazily so missing keys don't crash the module on load
+// Module-level singleton — one instance for the entire browser session.
+// Declared outside any function so it is truly created once per module load,
+// which prevents the "Multiple GoTrueClient instances" warning.
 let _client: SupabaseClient | null = null;
 
 export function getSupabaseClient(): SupabaseClient {
@@ -22,7 +26,10 @@ export function getSupabaseClient(): SupabaseClient {
       auth: {
         persistSession: true,
         autoRefreshToken: true,
+        // Tells the client to look for a `code` param in the URL on load
+        // and automatically exchange it for a session (PKCE flow).
         detectSessionInUrl: true,
+        flowType: "pkce",
       },
     });
   }

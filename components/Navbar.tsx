@@ -14,7 +14,7 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [authOpen, setAuthOpen] = useState(false);
-  const { user, loading, signIn, signUp, signOut } = useAuth();
+  const { user, loading, signIn, signUp, signInWithGoogle, signOut } = useAuth();
   const { profile } = useUserProfile(!!user);
 
   const isAuthenticated = !!user;
@@ -157,6 +157,7 @@ export function Navbar() {
         onClose={() => setAuthOpen(false)}
         onSignIn={signIn}
         onSignUp={signUp}
+        onSignInWithGoogle={signInWithGoogle}
       />
     </>
   );

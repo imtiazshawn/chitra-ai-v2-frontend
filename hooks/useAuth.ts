@@ -62,11 +62,23 @@ export function useAuth() {
     if (error) throw error;
   }, []);
 
+  const signInWithGoogle = useCallback(async () => {
+    const client = getSupabaseClientOrNull();
+    if (!client) throw new Error("Auth is not configured on this server.");
+    const { error } = await client.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) throw error;
+  }, []);
+
   const signOut = useCallback(async () => {
     const client = getSupabaseClientOrNull();
     if (!client) return;
     await client.auth.signOut();
   }, []);
 
-  return { ...state, signIn, signUp, signOut };
+  return { ...state, signIn, signUp, signInWithGoogle, signOut };
 }

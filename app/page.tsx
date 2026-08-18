@@ -24,7 +24,7 @@ export default function Home() {
   const [authOpen, setAuthOpen] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
 
-  const { user, signIn, signUp } = useAuth();
+  const { user, signIn, signUp, signInWithGoogle } = useAuth();
   const { profile, refreshProfile } = useUserProfile(!!user);
 
   const { reels, status: galleryStatus, errorMessage, reload, prepend } =
@@ -212,6 +212,7 @@ export default function Home() {
         onClose={handleAuthClose}
         onSignIn={signIn}
         onSignUp={signUp}
+        onSignInWithGoogle={signInWithGoogle}
       />
 
       {/* Paywall — free quota exhausted or pro has no tokens */}
