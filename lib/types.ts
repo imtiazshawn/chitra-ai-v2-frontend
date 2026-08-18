@@ -40,6 +40,9 @@ export interface ReelJob {
 
 export type BackendStatus = string;
 
+/** User plan tiers */
+export type UserPlan = "free" | "pro";
+
 export interface GenerateRequest {
   topic: string;
 }
@@ -47,6 +50,36 @@ export interface GenerateRequest {
 export interface GenerateResponse {
   job_id: string;
   status: BackendStatus;
+  quota_used: number;
+  quota_limit: number;
+}
+
+export interface QuotaResponse {
+  used: number;
+  limit: number;
+  remaining: number;
+  resets_at: string;
+}
+
+/**
+ * Full user profile returned by GET /me.
+ * Free users consume monthly quota.
+ * Pro users consume token_balance (purchased credits).
+ */
+export interface UserProfile {
+  user_id: string;
+  email: string | null;
+  plan: UserPlan;
+  /** Monthly videos used (free plan) */
+  quota_used: number;
+  /** Monthly video limit (free plan) */
+  quota_limit: number;
+  /** Remaining monthly videos (free plan) */
+  quota_remaining: number;
+  /** ISO datetime when free quota resets */
+  quota_resets_at: string;
+  /** Purchased token balance — only meaningful on pro plan */
+  token_balance: number;
 }
 
 export interface JobStatusResponse {

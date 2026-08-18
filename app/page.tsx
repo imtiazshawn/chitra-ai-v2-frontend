@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
@@ -11,16 +12,38 @@ import { ReelGallery } from "@/components/ReelGallery";
 import { GallerySkeleton } from "@/components/GallerySkeleton";
 import { GalleryError } from "@/components/GalleryError";
 import { DemoDock } from "@/components/DemoDock";
+import { AuthModal } from "@/components/AuthModal";
+import { PaywallModal } from "@/components/PaywallModal";
 import { useReelGeneration } from "@/hooks/useReelGeneration";
 import { useReelHistory } from "@/hooks/useReelHistory";
+import { useAuth } from "@/hooks/useAuth";
+import { useUserProfile } from "@/hooks/useUserProfile";
 import { GenerationStatus } from "@/lib/types";
 
 export default function Home() {
+  const [authOpen, setAuthOpen] = useState(false);
+  const [paywallOpen, setPaywallOpen] = useState(false);
+
+  const { user, signIn, signUp } = useAuth();
+  const { profile, refreshProfile } = useUserProfile(!!user);
+
   const { reels, status: galleryStatus, errorMessage, reload, prepend } =
     useReelHistory();
+
+  // Reload gallery + refresh profile when auth state changes
+  useEffect(() => {
+    reload();
+    refreshProfile();
+  }, [user, reload, refreshProfile]);
+
   const { scenario, stages, job, generate, regenerate, preview } =
     useReelGeneration({
-      onCompleted: (completedJob) => prepend(completedJob),
+      onCompleted: (completedJob) => {
+        prepend(completedJob);
+        refreshProfile();        // deduction already happened on backend; re-fetch to reflect new balance
+      },
+      onAuthRequired: () => setAuthOpen(true),
+      onQuotaExceeded: () => setPaywallOpen(true),
     });
 
   const status: GenerationStatus =
@@ -32,6 +55,9 @@ export default function Home() {
       ? "error"
       : "idle";
 
+  const handleAuthClose = useCallback(() => setAuthOpen(false), []);
+  const handlePaywallClose = useCallback(() => setPaywallOpen(false), []);
+
   return (
     <>
       <div className="grain-field" />
@@ -40,10 +66,13 @@ export default function Home() {
       <Navbar />
 
       <main id="top" className="flex-1">
-        {/* ------------------------------------------------------------ */}
-        {/* Hero / Studio                                                 */}
-        {/* ------------------------------------------------------------ */}
-        <section id="studio" className="relative overflow-hidden px-5 pb-20 pt-16 sm:px-8 sm:pt-24">
+        {/* ---------------------------------------------------------------- */}
+        {/* Hero / Studio                                                     */}
+        {/* ---------------------------------------------------------------- */}
+        <section
+          id="studio"
+          className="relative overflow-hidden px-5 pb-20 pt-16 sm:px-8 sm:pt-24"
+        >
           <div
             className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-[560px] opacity-70"
             style={{
@@ -87,7 +116,12 @@ export default function Home() {
           </div>
 
           <div className="mt-10">
-            <PromptConsole status={status} onGenerate={generate} />
+            <PromptConsole
+              status={status}
+              isAuthenticated={!!user}
+              onGenerate={generate}
+              onAuthRequired={() => setAuthOpen(true)}
+            />
           </div>
 
           {/* Live pipeline / result / error zone */}
@@ -104,7 +138,11 @@ export default function Home() {
               )}
 
               {scenario === "error" && job && (
-                <motion.div key="error" exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.3 }}>
+                <motion.div
+                  key="error"
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.3 }}
+                >
                   <div className="mb-5">
                     <PipelineTimeline stages={stages} />
                   </div>
@@ -126,10 +164,13 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ------------------------------------------------------------ */}
-        {/* Reel library                                                  */}
-        {/* ------------------------------------------------------------ */}
-        <section id="library" className="border-t border-panel-hairline px-5 py-16 sm:px-8 sm:py-20">
+        {/* ---------------------------------------------------------------- */}
+        {/* Reel library                                                      */}
+        {/* ---------------------------------------------------------------- */}
+        <section
+          id="library"
+          className="border-t border-panel-hairline px-5 py-16 sm:px-8 sm:py-20"
+        >
           <div className="mx-auto max-w-7xl">
             <div className="mb-8 flex flex-wrap items-end justify-between gap-3">
               <div>
@@ -151,7 +192,10 @@ export default function Home() {
 
             {galleryStatus === "loading" && <GallerySkeleton />}
             {galleryStatus === "error" && (
-              <GalleryError message={errorMessage ?? "Something went wrong."} onRetry={reload} />
+              <GalleryError
+                message={errorMessage ?? "Something went wrong."}
+                onRetry={reload}
+              />
             )}
             {galleryStatus === "ready" && <ReelGallery reels={reels} />}
           </div>
@@ -161,6 +205,21 @@ export default function Home() {
       <Footer />
 
       <DemoDock scenario={scenario} onChange={preview} />
+
+      {/* Auth modal — Navbar "Sign in" + unauthenticated generate attempts */}
+      <AuthModal
+        open={authOpen}
+        onClose={handleAuthClose}
+        onSignIn={signIn}
+        onSignUp={signUp}
+      />
+
+      {/* Paywall — free quota exhausted or pro has no tokens */}
+      <PaywallModal
+        open={paywallOpen}
+        onClose={handlePaywallClose}
+        profile={profile}
+      />
     </>
   );
 }

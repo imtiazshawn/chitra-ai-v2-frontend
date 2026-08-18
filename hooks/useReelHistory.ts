@@ -32,6 +32,12 @@ export function useReelHistory() {
       );
       setStatus("ready");
     } catch (err) {
+      // If the user is not signed in, show an empty gallery instead of an error
+      if (err instanceof ApiError && err.status === 401) {
+        setReels([]);
+        setStatus("ready");
+        return;
+      }
       setErrorMessage(
         err instanceof ApiError ? err.message : "Couldn't load your reel library."
       );

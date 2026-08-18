@@ -11,9 +11,13 @@ export type HeroScenario = "idle" | "processing" | "completed" | "error";
 interface UseReelGenerationOptions {
   /** Called once a job completes, so the caller can prepend it to the gallery. */
   onCompleted?: (job: ReelJob) => void;
+  /** Called when the API returns 401 — caller should open the auth modal. */
+  onAuthRequired?: () => void;
+  /** Called when the API returns 402 — caller should open the paywall modal. */
+  onQuotaExceeded?: () => void;
 }
 
-export function useReelGeneration({ onCompleted }: UseReelGenerationOptions = {}) {
+export function useReelGeneration({ onCompleted, onAuthRequired, onQuotaExceeded }: UseReelGenerationOptions = {}) {
   const [scenario, setScenario] = useState<HeroScenario>("idle");
   const [stages, setStages] = useState<PipelineStage[]>(
     INITIAL_STAGES.map((s) => ({ ...s }))
@@ -115,6 +119,21 @@ export function useReelGeneration({ onCompleted }: UseReelGenerationOptions = {}
       poll(job_id, topic, myRun);
     } catch (err) {
       if (runId.current !== myRun) return;
+
+      // Unauthenticated — prompt sign-in instead of showing error
+      if (err instanceof ApiError && err.status === 401) {
+        resetToIdle();
+        onAuthRequired?.();
+        return;
+      }
+
+      // Quota exceeded — show paywall instead of error panel
+      if (err instanceof ApiError && err.status === 402) {
+        resetToIdle();
+        onQuotaExceeded?.();
+        return;
+      }
+
       setJob({
         id: "unknown",
         prompt: topic,

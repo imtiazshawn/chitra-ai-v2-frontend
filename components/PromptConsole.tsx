@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight, Mic2, Ratio, Sparkles, Timer } from "lucide-react";
+import { ArrowUpRight, LogIn, Mic2, Ratio, Sparkles, Timer } from "lucide-react";
 import { SAMPLE_PROMPTS } from "@/lib/mock-data";
 import { GenerationStatus } from "@/lib/types";
 import { cn } from "@/lib/cn";
@@ -49,21 +49,40 @@ function useTypewriterPlaceholder(words: string[], active: boolean) {
 
 interface PromptConsoleProps {
   status: GenerationStatus;
+  /** True when a Supabase session exists. Controls gate behaviour. */
+  isAuthenticated: boolean;
   onGenerate: (prompt: string) => void;
+  /** Called when the user hits Generate without being signed in. */
+  onAuthRequired: () => void;
 }
 
-export function PromptConsole({ status, onGenerate }: PromptConsoleProps) {
+export function PromptConsole({
+  status,
+  isAuthenticated,
+  onGenerate,
+  onAuthRequired,
+}: PromptConsoleProps) {
   const [prompt, setPrompt] = useState("");
   const [voice, setVoice] = useState(VOICE_OPTIONS[0]);
   const [length, setLength] = useState(LENGTH_OPTIONS[1]);
   const [focused, setFocused] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const placeholder = useTypewriterPlaceholder(SAMPLE_PROMPTS, !focused && prompt.length === 0);
+  const placeholder = useTypewriterPlaceholder(
+    SAMPLE_PROMPTS,
+    !focused && prompt.length === 0
+  );
 
   const busy = status === "queued" || status === "processing";
 
   const handleSubmit = () => {
     if (!prompt.trim() || busy) return;
+
+    // Gate — open auth modal instead of firing the API
+    if (!isAuthenticated) {
+      onAuthRequired();
+      return;
+    }
+
     onGenerate(prompt.trim());
   };
 
@@ -74,7 +93,7 @@ export function PromptConsole({ status, onGenerate }: PromptConsoleProps) {
       transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
       className="relative mx-auto w-full max-w-3xl"
     >
-      {/* clapperboard stripe header */}
+      {/* Clapperboard stripe header */}
       <div
         className="flex h-8 items-stretch overflow-hidden rounded-t-2xl border border-b-0 border-panel-hairline-strong"
         style={{
@@ -87,7 +106,8 @@ export function PromptConsole({ status, onGenerate }: PromptConsoleProps) {
       <div
         className={cn(
           "glass rounded-b-2xl rounded-t-none border-t-0 p-2 shadow-[0_30px_80px_-30px_rgba(0,0,0,0.9)] transition-shadow",
-          focused && "shadow-[0_0_0_1px_rgba(255,176,32,0.4),0_30px_80px_-30px_rgba(0,0,0,0.9)]"
+          focused &&
+            "shadow-[0_0_0_1px_rgba(255,176,32,0.4),0_30px_80px_-30px_rgba(0,0,0,0.9)]"
         )}
       >
         <div className="flex items-center justify-between px-3 pt-2">
@@ -115,7 +135,7 @@ export function PromptConsole({ status, onGenerate }: PromptConsoleProps) {
             }}
             rows={2}
             disabled={busy}
-            placeholder={placeholder || "Type a topic — try “Life is beautiful”"}
+            placeholder={placeholder || "Type a topic — try \u201cLife is beautiful\u201d"}
             className="w-full resize-none bg-transparent font-display text-2xl font-medium leading-snug text-ink placeholder:text-ink-faint focus:outline-none disabled:opacity-50 sm:text-[28px]"
           />
         </div>
@@ -140,29 +160,49 @@ export function PromptConsole({ status, onGenerate }: PromptConsoleProps) {
             </span>
           </div>
 
-          <button
-            onClick={handleSubmit}
-            disabled={!prompt.trim() || busy}
-            className={cn(
-              "group flex items-center justify-center gap-2 rounded-xl px-5 py-3 font-display text-sm font-semibold transition-all",
-              "disabled:cursor-not-allowed disabled:opacity-40",
-              !busy &&
-                "bg-amber-400 text-void hover:bg-amber-200 active:scale-[0.98] shadow-[0_0_0_0_rgba(255,176,32,0)] hover:shadow-[0_0_24px_2px_rgba(255,176,32,0.35)]",
-              busy && "bg-panel-hi text-ink-dim"
-            )}
-          >
-            {busy ? (
-              <>
-                <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
-                Rolling…
-              </>
-            ) : (
-              <>
-                Action — Generate Reel
-                <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-              </>
-            )}
-          </button>
+          {/* Generate / Sign-in CTA */}
+          {!isAuthenticated ? (
+            // Not signed in — show a softer "sign in to generate" button
+            <button
+              onClick={() => onAuthRequired()}
+              disabled={busy}
+              className={cn(
+                "group flex items-center justify-center gap-2 rounded-xl px-5 py-3",
+                "font-display text-sm font-semibold transition-all",
+                "border border-amber-400/40 text-amber-400",
+                "hover:bg-amber-400/10 active:scale-[0.98]",
+                "disabled:cursor-not-allowed disabled:opacity-40"
+              )}
+            >
+              <LogIn className="h-4 w-4" />
+              Sign in to generate
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={!prompt.trim() || busy}
+              className={cn(
+                "group flex items-center justify-center gap-2 rounded-xl px-5 py-3",
+                "font-display text-sm font-semibold transition-all",
+                "disabled:cursor-not-allowed disabled:opacity-40",
+                !busy &&
+                  "bg-amber-400 text-void hover:bg-amber-200 active:scale-[0.98] shadow-[0_0_0_0_rgba(255,176,32,0)] hover:shadow-[0_0_24px_2px_rgba(255,176,32,0.35)]",
+                busy && "bg-panel-hi text-ink-dim"
+              )}
+            >
+              {busy ? (
+                <>
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-cyan-400" />
+                  Rolling…
+                </>
+              ) : (
+                <>
+                  Action — Generate Reel
+                  <ArrowUpRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
     </motion.div>
